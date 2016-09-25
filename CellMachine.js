@@ -6,7 +6,7 @@ function Machine(param) {
     div.appendChild(canvas)
     var grid = []
     for (var i = 0; i < param.width * param.height; i++) {
-    	grid[i] = {}
+    	grid[i] = { jump: jump }
     	grid[i].id = i
     	grid[i].y = Math.floor(i / param.width)
     	grid[i].x = i % param.width
@@ -167,7 +167,7 @@ function Machine(param) {
     this.static = param.static
 }
 
-Object.prototype.jump = function(type, static) {
+function jump (type, static) {
 	for(var key in type)
 		if (type[key] != null && key != 'from' && key != 'x' && key != 'y' && key != 'id' && key != 'n')
 			if (!static || static.indexOf(key) < 0)
