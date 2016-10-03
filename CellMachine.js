@@ -86,6 +86,14 @@ function Machine(param) {
 	this.visualize = function() {
 		var m = this
 		var ctx = m.canvas.getContext('2d')
+
+		//hex
+		if (this.hex) {
+			drawHexGrid(this)
+			return
+		}
+		//_hex
+
 		for (var i = 0; i < m.grid.length; i++) {
 			if (m.grid[i].color != null) {
 				ctx.beginPath()
@@ -105,6 +113,16 @@ function Machine(param) {
 					if (Math.abs(m.grid[i].x - m.grid[j].x) <= m.grid[i].vision && Math.abs(m.grid[i].y - m.grid[j].y) <= m.grid[i].vision)
 						m.grid[i].n.push(m.grid[j].id)
 		}
+		//hex
+		if (this.hex) {
+			for (var i = 0; i < m.grid.length; i++) {
+				var used = new Array(m.grid.length)
+				for (var j = 0; j < used.length; ++j) used[j] = false
+				used[i] = true
+				m.grid[i].n = getHexNeighbours(m.grid[i], m.grid[i].vision, m.grid, m)
+			}
+		}
+		//_hex
 		clearInterval(m.interval)
 		m.interval = setInterval(function() {m.step(); if (after) after()}, interval)
 	}
@@ -165,9 +183,10 @@ function Machine(param) {
     this.grid = grid
     this.canvas = canvas
     this.static = param.static
+    this.hex = param.hex
 }
 
-function jump (type, static) {
+function jump(type, static) {
 	for(var key in type)
 		if (type[key] != null && key != 'from' && key != 'x' && key != 'y' && key != 'id' && key != 'n')
 			if (!static || static.indexOf(key) < 0)
@@ -252,3 +271,64 @@ Array.prototype.swap = function(a, b) {
 }
 
 Function.prototype.isFunction = true
+
+function drawHex(m, center, color) {
+	var ctx = m.canvas.getContext('2d')
+	ctx.fillStyle = color
+	ctx.lineWidth = 0
+	ctx.beginPath()
+	var firstCorner = hexCorner(center, m.size / 2, 0)
+	ctx.moveTo(firstCorner.x, firstCorner.y)
+	for (var i = 1; i < 7; ++i) {
+		var corner = hexCorner(center, m.size / 2, i)
+		ctx.lineTo(corner.x, corner.y)
+	}
+	ctx.fill()
+}
+
+function hexCorner(center, size, i) {
+    var angle_deg = 60 * i
+    var angle_rad = Math.PI / 180 * angle_deg
+    return { x: center.x + size * Math.cos(angle_rad),
+             y: center.y + size * Math.sin(angle_rad) }
+}
+
+function drawHexGrid(m) {
+	for (var i = 0; i < m.grid.length; ++i) {
+		var evenColumn = m.grid[i].x % 2 == 0
+		drawHex(m, { x: m.grid[i].x * (m.size * 3 / 4) + m.size / 2, y: m.grid[i].y * (Math.sqrt(3)/2 * m.size) + evenColumn * (Math.sqrt(3)/2 * m.size) / 2 + (Math.sqrt(3)/2 * m.size) / 2 + 1 }, m.colors[m.grid[i].color])
+	}
+}
+
+function getHexNeighbours(cell, vision, grid, m) {
+	var d = [
+	   [ [+1, +1], [+1,  0], [ 0, -1],
+	     [-1,  0], [-1, +1], [ 0, +1] ],
+	   [ [+1,  0], [+1, -1], [ 0, -1],
+	     [-1, -1], [-1,  0], [ 0, +1] ]
+	]
+
+	var n = []
+
+	var h = [vision]
+	for (var i = 1; i <= vision; ++i)
+		if (i & 1)
+			h[i] = h[i-1]
+		else
+			h[i] = h[i-1] - 1
+
+	for (var i = 0; i < grid.length; ++i) {
+		var _w = Math.abs(grid[i].x - cell.x)
+		var _h = Math.abs(grid[i].y - cell.y)
+		if ((cell.x & 1) && (_w & 1))
+			if (grid[i].y > cell.y)
+				_h++
+		if ((!(cell.x & 1)) && (_w & 1))
+			if (grid[i].y < cell.y)
+				_h++
+		if (_h <= h[_w] && grid[i] != cell)
+			n.push(i)
+	}
+
+	return n
+}
