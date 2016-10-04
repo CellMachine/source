@@ -1,3 +1,8 @@
+/*
+ * @version 1.5
+ * Messaging and hex grids added.
+*/
+
 function Machine(param) {
 	var canvas = document.createElement('canvas')
     var div = document.getElementById(param.container)
@@ -133,57 +138,84 @@ function Machine(param) {
 
 	this.step = function() {
 		var m = this
-		currentMachine = m
 		var old_grid = cloneArray(m.grid)
+
 		var chosen = new Array(m.grid.length)
 		for (var i = 0; i < m.grid.length; i++) chosen[i] = false
 
 		for (var i = 0; i < m.grid.length; i++)
 			m.grid[i].moving = false
+
+		if (this.messaging) {
+			for (var i = 0; i < m.grid.length; ++i)
+				for (var j = 0; j < this.messages[i].length; ++j)
+					grid[i].onMessage(this.messages[i][j].sender, this.messages[i][j].content)
+		}
+
+		this.messages = new Array(grid.length)
+		for (var i = 0; i < grid.length; ++i) this.messages[i] = []
+
 		for (var i = 0; i < m.grid.length; i++) {
 			var n = []
 			for (var j = 0; j < old_grid[i].n.length; j++)
 				n.push(old_grid[old_grid[i].n[j]])
+
 			m.grid[i].process(n)
-			var moving = m.grid[i].move(n)
-			m.grid[i].moving = moving
-			if (moving && moving.y >= 0 && moving.x >= 0 && moving.y < this.height && moving.x < this.width)
-				if (m.grid[moving.y * this.width + moving.x].from.length == 0 || m.grid[i].moving.priority > m.grid[moving.y * this.width + moving.x].from[0].moving.priority) {
-					for (var j = 0; j < m.grid[moving.y * this.width + moving.x].from.length; j++)
-						chosen[m.grid[moving.y * this.width + moving.x].from[j].id] = false
-					m.grid[moving.y * this.width + moving.x].from = []
-					m.grid[moving.y * this.width + moving.x].from.push(cloneObject(m.grid[i]))
-					chosen[i] = true
-				} else if (m.grid[moving.y * this.width + moving.x].from.length > 0 && m.grid[i].moving.priority == m.grid[moving.y * this.width + moving.x].from[0].moving.priority) {
-					if (Math.random() > 0.5) {
+
+			if (this.moving) {
+				var moving = m.grid[i].move(n)
+				m.grid[i].moving = moving
+				if (moving && moving.y >= 0 && moving.x >= 0 && moving.y < this.height && moving.x < this.width)
+					if (m.grid[moving.y * this.width + moving.x].from.length == 0 || m.grid[i].moving.priority > m.grid[moving.y * this.width + moving.x].from[0].moving.priority) {
 						for (var j = 0; j < m.grid[moving.y * this.width + moving.x].from.length; j++)
 							chosen[m.grid[moving.y * this.width + moving.x].from[j].id] = false
 						m.grid[moving.y * this.width + moving.x].from = []
 						m.grid[moving.y * this.width + moving.x].from.push(cloneObject(m.grid[i]))
 						chosen[i] = true
+					} else if (m.grid[moving.y * this.width + moving.x].from.length > 0 && m.grid[i].moving.priority == m.grid[moving.y * this.width + moving.x].from[0].moving.priority) {
+						if (Math.random() > 0.5) {
+							for (var j = 0; j < m.grid[moving.y * this.width + moving.x].from.length; j++)
+								chosen[m.grid[moving.y * this.width + moving.x].from[j].id] = false
+							m.grid[moving.y * this.width + moving.x].from = []
+							m.grid[moving.y * this.width + moving.x].from.push(cloneObject(m.grid[i]))
+							chosen[i] = true
+						}
 					}
+			}
+
+			if (this.messaging) {
+				var sended = grid[i].sendMessage(n)
+				if (sended)
+					for (var j = 0; j < sended.length; ++j)
+						this.messages[sended[j].address].push({ sender: grid[i].id, content: sended[j].content })
+			}
+		}
+
+		if (this.moving) {
+			for (var i = 0; i < m.grid.length; i++)
+				if (chosen[i])
+					m.grid[i].jump(m.grid[i].moving.instead)
+			for (var i = 0; i < m.grid.length; i++)
+				if (m.grid[i].from.length > 0) {
+					var j = Math.floor(Math.random() * m.grid[i].from.length)
+					m.grid[i].jump(m.grid[i].from[j], this.static)
+					m.grid[i].from = []
 				}
 		}
-		for (var i = 0; i < m.grid.length; i++)
-			if (chosen[i])
-				m.grid[i].jump(m.grid[i].moving.instead)
-		for (var i = 0; i < m.grid.length; i++)
-			if (m.grid[i].from.length > 0) {
-				var j = Math.floor(Math.random() * m.grid[i].from.length)
-				m.grid[i].jump(m.grid[i].from[j], this.static)
-				m.grid[i].from = []
-			}
+
 		m.visualize()
 	}
 
-    this.colors = param.colors
-    this.size = param.size
-    this.width = param.width
-    this.height = param.height
+	for (var key in param)
+		this[key] = param[key]
+
     this.grid = grid
     this.canvas = canvas
-    this.static = param.static
-    this.hex = param.hex
+
+    if (this.messaging) {
+    	this.messages = new Array(grid.length)
+    	for (var i = 0; i < grid.length; ++i) this.messages[i] = []
+    }
 }
 
 function jump(type, static) {
