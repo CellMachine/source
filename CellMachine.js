@@ -1,5 +1,5 @@
 /*
- * @version 1.5
+ * @version 1.6.1
  * Messaging and hex grids added.
 */
 
@@ -222,7 +222,10 @@ function jump(type, static) {
 	for(var key in type)
 		if (type[key] != null && key != 'from' && key != 'x' && key != 'y' && key != 'id' && key != 'n')
 			if (!static || static.indexOf(key) < 0)
-				this[key] = cloneObject(type[key])
+				if (Array.isArray(type[key]))
+					this[key] = cloneArray(type[key])
+				else
+					this[key] = cloneObject(type[key])
 }
 
 function cloneObject(obj) {
